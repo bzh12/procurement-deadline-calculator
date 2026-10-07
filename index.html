@@ -183,7 +183,4 @@ $("send").onclick=async()=>{
    $("send").textContent="Send feedback";
  }
 };
- const responses=JSON.parse(localStorage.getItem("procurement_feedback")||"[]");responses.push(record);localStorage.setItem("procurement_feedback",JSON.stringify(responses));
- $("msg").textContent="Thanks — your feedback has been recorded on this device.";
-};
 </script></body></html>
