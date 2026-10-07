@@ -1,6 +1,13 @@
 <!doctype html>
 <html lang="en">
 <head>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-SGDFQEQP1X"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-SGDFQEQP1X');
+</script>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Procurement Deadline Calculator</title>
 <meta name="description" content="Work backward from an installation date to see when approval and ordering need to happen.">
@@ -109,6 +116,12 @@ footer{margin-top:24px;color:#98a2b3;font-size:12px;text-align:center}
 
 <script>
 const BUFFER=5,$=id=>document.getElementById(id);
+let calculatorStarted=false;
+function track(name,params={}){ if(typeof gtag==="function") gtag("event",name,params); }
+function markStarted(){ if(!calculatorStarted){ calculatorStarted=true; track("calculator_start"); } }
+["item","install","lead","leadType","approval","approvalDays","approvalType"].forEach(id=>{
+ const el=$(id); if(el){ el.addEventListener("change",markStarted); el.addEventListener("input",markStarted,{once:true}); }
+});
 $("approval").onchange=()=>$("approvalWrap").style.display=$("approval").value==="yes"?"block":"none";
 function addCalendarDays(d,n){let x=new Date(d);x.setDate(x.getDate()+n);return x}
 function subtractBusinessDays(d,n){let x=new Date(d),left=n;while(left>0){x.setDate(x.getDate()-1);let day=x.getDay();if(day!==0&&day!==6)left--}return x}
@@ -128,10 +141,48 @@ $("calc").onclick=()=>{
  else if(diffDays(today,order)<=7){status="CONFIRM DELIVERY";cls="warn";headline="This is getting close.";ex=`The order deadline is ${fmt(order)}. Confirm the supplier can meet the required arrival date.`}
  $("status").textContent=status;$("status").className="status "+cls;$("headline").textContent=headline;$("explanation").textContent=ex;
  $("approvalRow").style.display=yes?"flex":"none";$("approvalDate").textContent=fmt(approvalDate);$("orderDate").textContent=fmt(order);$("arrivalDate").textContent=fmt(arrival);$("installDate").textContent=fmt(install);
- $("result").style.display="block";$("feedback").style.display="block";$("result").scrollIntoView({behavior:"smooth",block:"start"});
+ $("result").style.display="block";$("feedback").style.display="block";
+ track("calculator_complete",{lead_time_type:leadType,approval_required:yes});
+ track("result_view",{status:status});
+ $("result").scrollIntoView({behavior:"smooth",block:"start"});
 };
-$("send").onclick=()=>{
- const record={time:new Date().toISOString(),interest:document.querySelector('input[name="interest"]:checked')?.value||"",pay:document.querySelector('input[name="pay"]:checked')?.value||"",method:$("method").value.trim(),projects:$("projects").value,email:$("email").value.trim()};
+$("send").onclick=async()=>{
+ const interest=document.querySelector('input[name="interest"]:checked')?.value||"";
+ const pay=document.querySelector('input[name="pay"]:checked')?.value||"";
+ const method=$("method").value.trim();
+ const projects=$("projects").value;
+ const email=$("email").value.trim();
+
+ if(!interest||!pay||!method||!projects){
+   $("msg").textContent="Please answer the four feedback questions above. Email is optional.";
+   return;
+ }
+ track("interest_answer",{answer:interest});
+ track("pricing_answer",{answer:pay});
+
+ const formData=new FormData();
+ formData.append("entry.1852258783",interest);
+ formData.append("entry.296876236",pay);
+ formData.append("entry.800244972",method);
+ formData.append("entry.1986877076",projects);
+ formData.append("entry.246873472",email);
+
+ $("send").disabled=true;
+ $("send").textContent="Sending…";
+ try{
+   await fetch("https://docs.google.com/forms/d/e/1FAIpQLSeV_YGX-R2meMzLgpDOGwmdOhI63LhPnUzUvyA6fGwbQQqTIg/formResponse",{
+     method:"POST",mode:"no-cors",body:formData
+   });
+   track("feedback_submit");
+   if(email) track("early_access_submit");
+   $("msg").textContent="Thanks — your feedback was sent.";
+   $("send").textContent="Feedback sent ✓";
+ }catch(e){
+   $("msg").textContent="Something went wrong. Please try again.";
+   $("send").disabled=false;
+   $("send").textContent="Send feedback";
+ }
+};
  const responses=JSON.parse(localStorage.getItem("procurement_feedback")||"[]");responses.push(record);localStorage.setItem("procurement_feedback",JSON.stringify(responses));
  $("msg").textContent="Thanks — your feedback has been recorded on this device.";
 };
