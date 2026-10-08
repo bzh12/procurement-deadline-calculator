@@ -117,6 +117,11 @@ footer{margin-top:24px;color:#98a2b3;font-size:12px;text-align:center}
 <script>
 const BUFFER=5,$=id=>document.getElementById(id);
 let calculatorStarted=false;
+// Optional attribution tag in outreach URLs, e.g. ?source=contractor01 or ?source=reddit.
+// Keep tags short, anonymous, and free of names/email addresses.
+const sourceTag=(new URLSearchParams(window.location.search).get("source")||"")
+  .trim().slice(0,50).replace(/[^a-zA-Z0-9_-]/g,"");
+
 function track(name,params={}){ if(typeof gtag==="function") gtag("event",name,params); }
 function markStarted(){ if(!calculatorStarted){ calculatorStarted=true; track("calculator_start"); } }
 ["item","install","lead","leadType","approval","approvalDays","approvalType"].forEach(id=>{
@@ -142,8 +147,8 @@ $("calc").onclick=()=>{
  $("status").textContent=status;$("status").className="status "+cls;$("headline").textContent=headline;$("explanation").textContent=ex;
  $("approvalRow").style.display=yes?"flex":"none";$("approvalDate").textContent=fmt(approvalDate);$("orderDate").textContent=fmt(order);$("arrivalDate").textContent=fmt(arrival);$("installDate").textContent=fmt(install);
  $("result").style.display="block";$("feedback").style.display="block";
- track("calculator_complete",{lead_time_type:leadType,approval_required:yes});
- track("result_view",{status:status});
+ track("calculator_complete",{lead_time_type:leadType,approval_required:yes, outreach_source:sourceTag||"direct"});
+ track("result_view",{status:status, outreach_source:sourceTag||"direct"});
  $("result").scrollIntoView({behavior:"smooth",block:"start"});
 };
 $("send").onclick=async()=>{
@@ -163,7 +168,7 @@ $("send").onclick=async()=>{
  const formData=new FormData();
  formData.append("entry.1852258783",interest);
  formData.append("entry.296876236",pay);
- formData.append("entry.800244972",method);
+ formData.append("entry.800244972",sourceTag ? method+" [Source: "+sourceTag+"]" : method);
  formData.append("entry.1986877076",projects);
  formData.append("entry.246873472",email);
 
@@ -173,8 +178,8 @@ $("send").onclick=async()=>{
    await fetch("https://docs.google.com/forms/d/e/1FAIpQLSeV_YGX-R2meMzLgpDOGwmdOhI63LhPnUzUvyA6fGwbQQqTIg/formResponse",{
      method:"POST",mode:"no-cors",body:formData
    });
-   track("feedback_submit");
-   if(email) track("early_access_submit");
+   track("feedback_submit",{outreach_source:sourceTag||"direct"});
+   if(email) track("early_access_submit",{outreach_source:sourceTag||"direct"});
    $("msg").textContent="Thanks — your feedback was sent.";
    $("send").textContent="Feedback sent ✓";
  }catch(e){
